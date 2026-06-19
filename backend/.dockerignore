@@ -1,0 +1,15 @@
+# Build artifacts
+server
+
+# Version control
+.git
+.gitignore
+
+# IDE / OS
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

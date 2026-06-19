@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "8081:8081/udp" # WebTransport uses UDP
+    # NET_ADMIN is required for tc (traffic control) netem commands
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - QUIC_GO_LOG_LEVEL=debug
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - WATCHPACK_POLLING=true # Helps with hot-reloading on Windows/WSL
