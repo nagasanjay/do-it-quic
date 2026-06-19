@@ -14,10 +14,8 @@ COPY . .
 RUN go get github.com/quic-go/webtransport-go@latest
 RUN go mod tidy
 
-# Inspect methods of Session to resolve the API mismatch
-RUN echo "INSPECTING WEBTRANSPORT SESSION METHODS:" && grep -oP 'func \(s \*Session\) \K\w+' /go/pkg/mod/github.com/quic-go/webtransport-go*/session.go || true
-
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /build/server ./cmd/server.go
+# ponytail: compile natively for host architecture (supports OCI ARM64)
+RUN CGO_ENABLED=0 GOOS=linux go build -o /build/server ./cmd/server.go
 
 # --- Stage 2: Minimal runtime image ---
 FROM alpine:3.20
