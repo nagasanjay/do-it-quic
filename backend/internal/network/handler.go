@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 type UpdateRequest struct {
@@ -22,7 +23,7 @@ func HandleNetworkUpdate(config *GlobalConfig) http.HandlerFunc {
 		origin := request.Header.Get("Origin")
 
 		// Only set CORS headers if the origin is whitelisted
-		if allowedOrigins[origin] {
+		if allowedOrigins[origin] || strings.HasSuffix(origin, ".nagasanjay.com") {
 			responseWriter.Header().Set("Access-Control-Allow-Origin", origin)
 			responseWriter.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 			responseWriter.Header().Set("Access-Control-Allow-Headers", "Content-Type")
