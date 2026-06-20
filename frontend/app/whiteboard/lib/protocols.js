@@ -9,10 +9,10 @@ export class ProtocolConnection {
   }
 
   async connect() {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/ws";
+    const wsUrl = (process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080").replace(/\/?$/, "/ws");
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
     const apiUrl = `${apiBase}/api/cert`;
-    const wtUrl = process.env.NEXT_PUBLIC_WT_URL || "https://localhost:8081/wt";
+    const wtUrl = (process.env.NEXT_PUBLIC_WT_URL || "https://localhost:8081").replace(/\/?$/, "/wt");
 
     if (this.protocol === "websocket") {
       this.ws = new WebSocket(wsUrl);
