@@ -140,7 +140,9 @@ export class AudioReceiver {
         this.handleAudioData(value);
       }
     } catch (err) {
-      console.error("WebTransport read stream error:", err);
+      if (this.isPlaying) {
+        console.error("WebTransport read stream error:", err);
+      }
     } finally {
       reader.releaseLock();
       if (this.isPlaying) {
