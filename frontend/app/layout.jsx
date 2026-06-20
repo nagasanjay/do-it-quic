@@ -14,6 +14,7 @@ export default function RootLayout({ children }) {
         <nav className="top-nav">
           <Link href="/" className="nav-link">Control Panel</Link>
           <Link href="/whiteboard" className="nav-link">Protocol Whiteboard</Link>
+          <Link href="/radio" className="nav-link">Resilient Radio</Link>
         </nav>
         {children}
       </body>

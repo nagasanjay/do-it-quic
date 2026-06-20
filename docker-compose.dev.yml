@@ -11,7 +11,7 @@ services:
     cap_add:
       - NET_ADMIN
     environment:
-      - QUIC_GO_LOG_LEVEL=debug
+      - QUIC_GO_LOG_LEVEL=info
     restart: unless-stopped
 
   frontend:

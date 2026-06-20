@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"do-it-quic-backend/internal/audio"
 	"do-it-quic-backend/internal/network"
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
@@ -22,6 +23,10 @@ func main() {
 		log.Fatalf("Failed to generate cert: %v", err)
 	}
 
+	// ponytail: start the audio broadcaster
+	audioBroadcaster := audio.NewBroadcaster()
+	audioBroadcaster.Start()
+
 	mux := http.NewServeMux()
 	
 	// API endpoints
@@ -35,6 +40,7 @@ func main() {
 
 	// WebSocket endpoint
 	mux.HandleFunc("/ws", network.HandleWebSocketEcho())
+	mux.HandleFunc("/audio/ws", network.HandleAudioWebSocket(audioBroadcaster))
 
 	// WebTransport Server Setup
 	wtServer := &webtransport.Server{
@@ -60,6 +66,10 @@ func main() {
 	wtMux.HandleFunc("/wt", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[WT-MUX] Hit /wt endpoint. Method: %s, Proto: %s", r.Method, r.Header.Get("Sec-Webtransport-Http3-Draft"))
 		network.HandleWebTransportEcho(wtServer)(w, r)
+	})
+	wtMux.HandleFunc("/audio/wt", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("[WT-MUX] Hit /audio/wt endpoint.")
+		network.HandleAudioWebTransport(wtServer, audioBroadcaster)(w, r)
 	})
 	
 	// Add logging middleware to H3 Handler
