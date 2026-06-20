@@ -9,8 +9,12 @@ export class ProtocolConnection {
   }
 
   async connect() {
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/ws";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/cert";
+    const wtUrl = process.env.NEXT_PUBLIC_WT_URL || "https://localhost:8081/wt";
+
     if (this.protocol === "websocket") {
-      this.ws = new WebSocket("ws://localhost:8080/ws");
+      this.ws = new WebSocket(wsUrl);
       this.ws.onmessage = (event) => {
         this.onMessage(JSON.parse(event.data));
       };
@@ -20,7 +24,7 @@ export class ProtocolConnection {
       });
     } else if (this.protocol === "webtransport-reliable" || this.protocol === "webtransport-unreliable") {
       try {
-        const res = await fetch("http://localhost:8080/api/cert");
+        const res = await fetch(apiUrl);
         const { hash } = await res.json();
 
         // Convert base64 hash to Uint8Array
@@ -30,7 +34,7 @@ export class ProtocolConnection {
           bytes[i] = binaryString.charCodeAt(i);
         }
 
-        this.wt = new WebTransport("https://localhost:8081/wt", {
+        this.wt = new WebTransport(wtUrl, {
           serverCertificateHashes: [{ algorithm: "sha-256", value: bytes }],
         });
 
