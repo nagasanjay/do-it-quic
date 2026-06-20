@@ -1,8 +1,10 @@
 package audio
 
 import (
+	"log"
 	"math"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -14,54 +16,42 @@ const (
 )
 
 type Broadcaster struct {
-	listeners  map[chan []byte]bool
-	register   chan chan []byte
-	unregister chan chan []byte
-	data       chan []byte
+	mu        sync.RWMutex
+	listeners map[chan []byte]bool
 }
 
 func NewBroadcaster() *Broadcaster {
 	return &Broadcaster{
-		listeners:  make(map[chan []byte]bool),
-		register:   make(chan chan []byte),
-		unregister: make(chan chan []byte),
-		data:       make(chan []byte),
+		listeners: make(map[chan []byte]bool),
 	}
 }
 
 func (b *Broadcaster) Start() {
-	go b.run()
+	log.Println("[AUDIO-SOURCE] Starting audio broadcaster loop...")
 	go b.streamLoop()
 }
 
 func (b *Broadcaster) Register() chan []byte {
-	ch := make(chan []byte, 64)
-	b.register <- ch
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	log.Println("[AUDIO-SOURCE] Registering new listener...")
+	ch := make(chan []byte, 128) // Buffer size 128 allows ~4 seconds of buffer space
+	b.listeners[ch] = true
+	log.Printf("[AUDIO-SOURCE] Listener registered. Active listeners: %d", len(b.listeners))
 	return ch
 }
 
 func (b *Broadcaster) Unregister(ch chan []byte) {
-	b.unregister <- ch
-}
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
-func (b *Broadcaster) run() {
-	for {
-		select {
-		case ch := <-b.register:
-			b.listeners[ch] = true
-		case ch := <-b.unregister:
-			delete(b.listeners, ch)
-			close(ch)
-		case chunk := <-b.data:
-			for ch := range b.listeners {
-				select {
-				case ch <- chunk:
-				default:
-					// ponytail: drop chunk if receiver is slow
-				}
-			}
-		}
+	log.Println("[AUDIO-SOURCE] Unregistering listener...")
+	if _, ok := b.listeners[ch]; ok {
+		delete(b.listeners, ch)
+		close(ch)
 	}
+	log.Printf("[AUDIO-SOURCE] Listener unregistered. Active listeners: %d", len(b.listeners))
 }
 
 func (b *Broadcaster) streamLoop() {
@@ -70,6 +60,11 @@ func (b *Broadcaster) streamLoop() {
 
 	// Try loading WAV file if present
 	wavData, err := loadWavData("audio.wav")
+	if err == nil {
+		log.Println("[AUDIO-SOURCE] Loaded audio.wav successfully")
+	} else {
+		log.Printf("[AUDIO-SOURCE] Failed to load audio.wav (falling back to synth arpeggiator): %v", err)
+	}
 	var fileIndex int
 
 	notes := []float64{261.63, 329.63, 392.00, 523.25} // C4, E4, G4, C5
@@ -101,7 +96,16 @@ func (b *Broadcaster) streamLoop() {
 			}
 		}
 
-		b.data <- chunk
+		// Broadcast to all active listeners
+		b.mu.RLock()
+		for ch := range b.listeners {
+			select {
+			case ch <- chunk:
+			default:
+				// ponytail: drop chunk if receiver is slow
+			}
+		}
+		b.mu.RUnlock()
 	}
 }
 

@@ -137,7 +137,7 @@ export class AudioReceiver {
         const { value, done } = await reader.read();
         if (done) break;
         this.packetCount++;
-        this.handleAudioData(value.buffer);
+        this.handleAudioData(value);
       }
     } catch (err) {
       console.error("WebTransport read stream error:", err);
@@ -150,14 +150,28 @@ export class AudioReceiver {
     }
   }
 
-  handleAudioData(arrayBuffer) {
-    if (!this.audioCtx || this.audioCtx.state === "suspended") return;
+  handleAudioData(data) {
+    if (!this.audioCtx) return;
 
     // Convert binary PCM (16-bit mono) to Float32Array
-    const int16Samples = new Int16Array(arrayBuffer);
+    // To be 100% safe against alignment issues and buffer pooling offsets:
+    // If it's a TypedArray (like Uint8Array from WebTransport), we copy its content to a new aligned buffer
+    let buf = data;
+    if (data.buffer) {
+      const byteOffset = data.byteOffset;
+      const byteLength = data.byteLength;
+      buf = data.buffer.slice(byteOffset, byteOffset + byteLength);
+    }
+
+    const int16Samples = new Int16Array(buf);
     const float32Samples = new Float32Array(int16Samples.length);
     for (let i = 0; i < int16Samples.length; i++) {
       float32Samples[i] = int16Samples[i] / 32768.0;
+    }
+
+    // Try to auto-resume the context if it's suspended
+    if (this.audioCtx.state === "suspended") {
+      this.audioCtx.resume().catch((e) => console.error("Failed to resume AudioContext:", e));
     }
 
     const buffer = this.audioCtx.createBuffer(1, float32Samples.length, this.sampleRate);
