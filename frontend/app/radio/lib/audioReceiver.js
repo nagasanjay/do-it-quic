@@ -14,8 +14,6 @@ export class AudioReceiver {
     this.isMuted = false;
     this.reconnectCount = 0;
     this.sampleRate = 16000;
-    this.watchdog = null;
-    this.watchdogTimeout = 2000; // 2 seconds silence threshold
   }
 
   async start() {
@@ -203,7 +201,6 @@ export class AudioReceiver {
     });
 
     this.nextPlayTime += buffer.duration;
-    this.resetWatchdog();
   }
 
   startWaveformLoop() {
@@ -244,40 +241,8 @@ export class AudioReceiver {
       this.audioCtx.close();
       this.audioCtx = null;
     }
-    if (this.watchdog) {
-      clearTimeout(this.watchdog);
-      this.watchdog = null;
-    }
     this.analyser = null;
     this.gainNode = null;
     this.onMetrics({ status: "stopped", packets: 0, latency: 0, bufferSize: 0 });
-  }
-
-  resetWatchdog() {
-    if (this.watchdog) clearTimeout(this.watchdog);
-    if (!this.isPlaying) return;
-
-    this.watchdog = setTimeout(() => {
-      console.warn(`[${this.protocol}] Silence detected for ${this.watchdogTimeout}ms. Reconnecting...`);
-      this.reconnect();
-    }, this.watchdogTimeout);
-  }
-
-  reconnect() {
-    if (this.ws) {
-      try { this.ws.close(); } catch (e) {}
-      this.ws = null;
-    }
-    if (this.wt) {
-      try { this.wt.close(); } catch (e) {}
-      this.wt = null;
-    }
-    
-    this.onMetrics({ status: "disconnected" });
-    this.reconnectCount++;
-    this.onMetrics({ reconnects: this.reconnectCount });
-    
-    // Trigger reconnection
-    this.connect();
   }
 }
